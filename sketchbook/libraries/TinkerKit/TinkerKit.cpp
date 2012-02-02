@@ -193,7 +193,7 @@ void TKGyro::calibrate()
    {
    	_yZeroVoltage += analogRead(_pinY);
    	_xZeroVoltage += analogRead(_pinX);
-   	delay(20);
+   	delay(200);
    }
    _yZeroVoltage /= 50;	 
    _xZeroVoltage /= 50;	

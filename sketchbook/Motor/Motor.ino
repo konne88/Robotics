@@ -34,95 +34,77 @@ private:
 
 const Motor left(11,13);
 const Motor right(3,12);
-TKAccelerometer accel(A2, A3);
+TKGyro gyro(A2, A3, TK_X1);
 
-const int target = 0;
-
-byte done[SENSOR_RANGE][MOTOR_RANGE/8];
+long lastSampleTime = 0;
 
 void setup() {
   Serial.begin(115200);
   
-  for(int x=0 ; x<SENSOR_RANGE; ++x) {
-    for(int y=0 ; y<MOTOR_RANGE/8 ; ++y) {
-      done[x][y] = 0;
-    }
-  }
-  
-  Serial.print("# Throttle index, Angle Index, Throttle, Angle, Result Angle, Result Error");
- 
-} 
-
-int getAccelerometerAngleInDegrees() {
-  long x = accel.getXAxis() - 473; 
-  long y = accel.getYAxis() - 480;
-  return atan2(x,y)/3.14159265*180.0;
-}
-
-void loop() {
-  // angles from about +19 -> - 20
-  // mapped to 0-19
-  int angle = getAccelerometerAngleInDegrees();
-  int xi = (min(max(angle,-20),19)+20)/4;
-  
-  int i;
-  int b;
-  
-  int throttle;
-  bool record = true;
-
-  // first fill the matrix sparsely
-  for(i=0 ; i<(MOTOR_RANGE/8) ; ++i) {
-    if(done[xi][i] == 0) {
-      done[xi][i] = 1;
-      throttle = ((i*8)*(512/MOTOR_RANGE))-255;      
-      goto out;
-    }
-  }  
-  // find empty bit
-  for(i=0 ; i<(MOTOR_RANGE/8) ; ++i) {
-    if(done[xi][i] == 0xff) {
-      continue;
-    }
-    for(b=0 ; b<8 ; ++b) {
-      if((done[xi][i] >> b) & 1) {
-         continue;
-      }
-      done[xi][i] |= (1<<b);
-      throttle = ((i*8+b)*(512/MOTOR_RANGE))-255;
-      goto out;
-    }
-  }
-  
-  // empty the row
-  left.setDirectedThrottle(0);
-  right.setDirectedThrottle(0);
+ // left.setThrottle(255);
+ // right.setThrottle(255);
   
   delay(1000);
-  record = false;
-  throttle = angle>target?255:-255;
   
-  out:
-  
-  // move
-  left.setDirectedThrottle(throttle);
-  right.setDirectedThrottle(throttle);
-  delay(100);
+//  gyro.calibrate();
 
-  // wait for the movement's impact
-  if(record){
-    Serial.print(i*8+b);
-    Serial.print(',');
-    Serial.print(xi);
-    Serial.print(',');
-    Serial.print(throttle);
-    Serial.print(',');
-    Serial.print(angle);
-    Serial.print(',');
-    Serial.print(getAccelerometerAngleInDegrees());
-    Serial.print(',');
-    Serial.println(abs(target - getAccelerometerAngleInDegrees()));
+//  left.setThrottle(0);
+//  right.setThrottle(0);
+ 
+  
+  
+  
+  
+  lastSampleTime = micros();
+}
+
+float angle = 0;
+
+long  _xZeroVoltage = 0.0;
+long  _yZeroVoltage = 0.0; 
+int i = 0;
+float xOff = 0;
+float yOff = 0;
+
+void loop() {
+  if(i<50){
+     ++i;
+     _yZeroVoltage += gyro.getYAxis();
+     _xZeroVoltage += gyro.getXAxis();
+     
+     xOff = (float)_xZeroVoltage/((float)i);
+     yOff = (float)_yZeroVoltage/((float)i);
   }
+  
+  float change = (float)gyro.getYAxis() - yOff;
+  long now = micros();
+  float slice = (float)change*((float)(now-lastSampleTime)) / 14633.0;
+
+  angle += slice;
+  lastSampleTime = now;
+  
+  bool dir = angle<=0;
+  Serial.print(dir?'<':'>');
+  Serial.print("       ");
+  Serial.print(change);
+  Serial.print("       ");
+  Serial.print(slice);
+  Serial.print("       ");
+  Serial.print(yOff);
+  Serial.print("       ");
+  Serial.println(angle);
+  
+  // empty the row
+  //left.setForward(dir);
+  //right.setForward(dir);
+  int m = abs(angle)/50+50;
+  
+  left.setThrottle(m);
+  right.setThrottle(m);
+  left.setForward(dir);
+  right.setForward(dir);
+  
+  delay(100);
 }
 
 
