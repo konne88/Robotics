@@ -4,21 +4,28 @@ X = load('-ascii', 'log.csv');
 
 # [x,y]=meshgrid(X(:,1)*8+X(:,2),X(:,3));
 
-x = [0:31];
-y = [0:19];
+x = [0:15];
+y = [0:9];
 
 z = zeros(length(x),length(y));
+minC = z;
+maxC = z;
 
 size(z)
 
 for i=1:size(X,1)
 	e = X(i,:);
-	if(e(1) < 4)
-		z(e(1)*8+e(2)+1,e(3)+1) = e(6);
-	end
+	a = e(1)+1;
+	b = e(2)+1;
+#	x(a) = e(3);
+#	y(b) = e(4);
+	z(a,b) = e(6);
+	minC(a,b) = min(minC(a,b),e(6));
+	maxC(a,b) = max(maxC(a,b),e(6));
 end
 z
+c = maxC-minC;
 
-mesh(y,x',z) 
+mesh(y,x',z,c) 
 
 pause

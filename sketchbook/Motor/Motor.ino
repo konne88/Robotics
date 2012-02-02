@@ -1,11 +1,7 @@
 #include <TinkerKit.h>
 
-#define DEGREE 3
-#define COLUMNS 2
-#define DIMENSIONS DEGREE*COLUMNS
-
-#define MOTOR_RANGE 32
-#define SENSOR_RANGE 20
+#define MOTOR_RANGE 16
+#define SENSOR_RANGE 10
 
 class Motor {
 public:
@@ -40,97 +36,49 @@ const Motor left(11,13);
 const Motor right(3,12);
 TKAccelerometer accel(A2, A3);
 
-int target;
+const int target = 0;
 
 byte done[SENSOR_RANGE][MOTOR_RANGE/8];
 
 void setup() {
   Serial.begin(115200);
-  //delay(1800);
-  target = accel.getXAxis();
- // delay(200);
   
   for(int x=0 ; x<SENSOR_RANGE; ++x) {
     for(int y=0 ; y<MOTOR_RANGE/8 ; ++y) {
       done[x][y] = 0;
     }
   }
+  
+  Serial.print("# Throttle index, Angle Index, Throttle, Angle, Result Angle, Result Error");
+ 
 } 
 
-int theta[DIMENSIONS];
-const int alpha = 1;
-
-/**
- * calculates how much we thing that we hate the given x
- */
-int hate(int x[]) {
-  long sum = 0;
-  for(int i=0 ; i<DIMENSIONS ; ++i) {
-    sum += x[i]*theta[i];
-  }
-  return sum/DIMENSIONS;
-}
-
-void generate_powers(int x[][DEGREE]) {
-  for(int c=0 ; c<COLUMNS ; ++c) {
-    for(int d=1 ; d<DEGREE ; ++d) {
-      x[c][d] = x[c][d-1]*x[c][0];
-    }
-  }
+int getAccelerometerAngleInDegrees() {
+  long x = accel.getXAxis() - 473; 
+  long y = accel.getYAxis() - 480;
+  return atan2(x,y)/3.14159265*180.0;
 }
 
 void loop() {
-/*  int x[COLUMNS][DEGREE];
-  int* px = (int*)x;
-  int y;
-
-  long start = millis();
-
-  // find best throttle for our acceleration
-  int bestThrottle = 0;
-  int minHate = 10000;
-
-  x[0][0] = accel.getXAxis();
-  for(int i=-255 ; i<=255 ; ++i) {
-    x[1][0] = i;
-    generate_powers(x);
-    if(hate(px) < minHate) {
-      bestThrottle = i;
-    }
-  }
-
-  // move
-  left.setDirectedThrottle(bestThrottle);
-  right.setDirectedThrottle(bestThrottle);
-
-  // wait for the movement's impact
-  delay(100);
-
-  // update polynome
-  x[1][0] = bestThrottle;
-  generate_powers(x);
-  y = abs(accel.getXAxis()-target);
-  int error = hate(px)-y;
-  for(int i=0 ; i<DIMENSIONS ; ++i) {
-    theta[i] -= alpha*error*px[i];
-  }
-*/
-  /*  for(int i=0 ; i<DIMENSIONS ; ++i) {
-   Serial.print(theta[i]);
-   Serial.print(',');
-   }*/
-
-
-  long x = accel.getXAxis(); 
-  x = min(max(x,400),599);
-  
-  long xi = (x-400)*SENSOR_RANGE/200;
+  // angles from about +19 -> - 20
+  // mapped to 0-19
+  int angle = getAccelerometerAngleInDegrees();
+  int xi = (min(max(angle,-20),19)+20)/4;
   
   int i;
   int b;
   
   int throttle;
-  
+  bool record = true;
+
+  // first fill the matrix sparsely
+  for(i=0 ; i<(MOTOR_RANGE/8) ; ++i) {
+    if(done[xi][i] == 0) {
+      done[xi][i] = 1;
+      throttle = ((i*8)*(512/MOTOR_RANGE))-255;      
+      goto out;
+    }
+  }  
   // find empty bit
   for(i=0 ; i<(MOTOR_RANGE/8) ; ++i) {
     if(done[xi][i] == 0xff) {
@@ -146,48 +94,35 @@ void loop() {
     }
   }
   
-  throttle = 255;
+  // empty the row
+  left.setDirectedThrottle(0);
+  right.setDirectedThrottle(0);
+  
+  delay(1000);
+  record = false;
+  throttle = angle>target?255:-255;
   
   out:
-  
   
   // move
   left.setDirectedThrottle(throttle);
   right.setDirectedThrottle(throttle);
+  delay(100);
 
   // wait for the movement's impact
-  delay(30);
-  Serial.print(i);
-  Serial.print(',');
-  Serial.print(b);
-  Serial.print(',');
-  Serial.print(xi);
-  Serial.print(',');
-  Serial.print(x);
-  Serial.print(',');
-  Serial.print(throttle);
-  Serial.print(',');
-  Serial.println(accel.getXAxis());
-
-  /*
-  int target = 503;
-   
-   long xAxisValue = accel.getXAxis();  
-   long yAxisValue = accel.getYAxis(); 
-   bool dir = xAxisValue > target;
-   
-   Serial.print(millis());
-   Serial.print(',');
-   Serial.print(xAxisValue);
-   Serial.print(',');
-   Serial.print(yAxisValue);
-   Serial.print(',');
-   Serial.println(dir);
-   
-   left.set(255,dir);
-   right.set(255,dir);
-   
-   delay(10);*/
+  if(record){
+    Serial.print(i*8+b);
+    Serial.print(',');
+    Serial.print(xi);
+    Serial.print(',');
+    Serial.print(throttle);
+    Serial.print(',');
+    Serial.print(angle);
+    Serial.print(',');
+    Serial.print(getAccelerometerAngleInDegrees());
+    Serial.print(',');
+    Serial.println(abs(target - getAccelerometerAngleInDegrees()));
+  }
 }
 
 

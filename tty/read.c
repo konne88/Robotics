@@ -2,6 +2,9 @@
 #include <fcntl.h>
 #include <termios.h>
 
+// stty -F /dev/ttyACM1 115200 cs8 cread clocal 
+// read /dev/ttyACM1
+
 int main(int argc, char **argv) {
 
     int fd;
