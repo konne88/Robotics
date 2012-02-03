@@ -41,70 +41,34 @@ long lastSampleTime = 0;
 void setup() {
   Serial.begin(115200);
   
- // left.setThrottle(255);
- // right.setThrottle(255);
+  left.setForward(false);
+  right.setForward(false);
+  
+  left.setThrottle(255);
+  right.setThrottle(255);
+  
+  // 10 umdrehungen
+  delay(8790);
+  
+  
+  
+ /* left.setForward(true);
+  right.setForward(true);
+  
   
   delay(1000);
+  */
   
 //  gyro.calibrate();
 
-//  left.setThrottle(0);
-//  right.setThrottle(0);
+  left.setThrottle(0);
+  right.setThrottle(0);
  
-  
-  
-  
-  
   lastSampleTime = micros();
 }
 
-float angle = 0;
-
-long  _xZeroVoltage = 0.0;
-long  _yZeroVoltage = 0.0; 
-int i = 0;
-float xOff = 0;
-float yOff = 0;
-
 void loop() {
-  if(i<50){
-     ++i;
-     _yZeroVoltage += gyro.getYAxis();
-     _xZeroVoltage += gyro.getXAxis();
-     
-     xOff = (float)_xZeroVoltage/((float)i);
-     yOff = (float)_yZeroVoltage/((float)i);
-  }
   
-  float change = (float)gyro.getYAxis() - yOff;
-  long now = micros();
-  float slice = (float)change*((float)(now-lastSampleTime)) / 14633.0;
-
-  angle += slice;
-  lastSampleTime = now;
-  
-  bool dir = angle<=0;
-  Serial.print(dir?'<':'>');
-  Serial.print("       ");
-  Serial.print(change);
-  Serial.print("       ");
-  Serial.print(slice);
-  Serial.print("       ");
-  Serial.print(yOff);
-  Serial.print("       ");
-  Serial.println(angle);
-  
-  // empty the row
-  //left.setForward(dir);
-  //right.setForward(dir);
-  int m = abs(angle)/50+50;
-  
-  left.setThrottle(m);
-  right.setThrottle(m);
-  left.setForward(dir);
-  right.setForward(dir);
-  
-  delay(100);
 }
 
 
