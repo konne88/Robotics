@@ -32,43 +32,68 @@ private:
   const byte pinForw;
 };
 
+class PDVars {
+  public:
+    PDVars(double Kpp, double Kdd)
+    : Kp(Kpp), Kd(Kdd), error(0), dError(0), lastError(0)
+    {}
+    
+    void computeErrors(double setPoint, double input){
+      error = setPoint - input;
+      dError = error - lastError;
+      lastError = error;
+    }
+    
+    double computeOutput(){
+      return Kp*error + Kd*dError;
+    }
+  
+    double Kp;
+    double Kd;
+    double error;
+    double dError;
+    double lastError;
+};
+
+
 const Motor left(11,13);
 const Motor right(3,12);
+PDVars pd(1, 0.4);
 TKGyro gyro(A2, A3, TK_X1);
 
 long lastSampleTime = 0;
+double setAngle = 0;
+double angle = 0;
+double lastRate = 0;
+double output = 0;
+long rawRate = 0;
+int beginning = 0;
+double zeroOff=510;
+double offSum=0;
 
 void setup() {
   Serial.begin(115200);
-  
-  left.setForward(false);
-  right.setForward(false);
-  
-  left.setThrottle(255);
-  right.setThrottle(255);
-  
-  // 10 umdrehungen
-  delay(8790);
-  
-  
-  
- /* left.setForward(true);
-  right.setForward(true);
-  
-  
-  delay(1000);
-  */
-  
-//  gyro.calibrate();
-
-  left.setThrottle(0);
-  right.setThrottle(0);
- 
-  lastSampleTime = micros();
+  delay(100);
+  lastSampleTime = millis();
+  lastRate = gyro.getYAxisRate();
 }
 
 void loop() {
-  
+  long now = millis();
+  long dt = now-lastSampleTime;
+  if(dt >= 10){
+    rawRate = gyro.getYAxis();
+    double rate = ((rawRate-zeroOff)*14633.0)/1000.0;
+    angle += ((rate+lastRate)*(double)dt)/2000.0;
+    
+    lastRate = rate;
+    
+    pd.computeErrors(setAngle, angle); 
+    output = pd.computeOutput();
+    lastSampleTime=now;
+  }
+  Serial.println(rawRate);
+  //right.setDirectedThrottle((int)output);
 }
 
 
