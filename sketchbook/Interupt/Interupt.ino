@@ -39,6 +39,7 @@ const Motor right(3,12);
 TKGyro gyro(I3, I3, TK_X1);
 TKAccelerometer accelerometer(I4, I5);
 
+
 int zeroOff = 509;
 int xZero=488;
 int yZero=485;
@@ -48,7 +49,7 @@ volatile long samples;
 
 volatile bool tog = false;
 
-#define HZ (100L)
+#define HZ (8000L)
 #define pi (3.14159265)
 
 void setup()
@@ -89,26 +90,32 @@ void loop()
 { // double rate = ((rawRate-zeroOff)*14633.0)/1000.0;
   
  // 36/3 = x
+  //  + (long)(0.9*(double)samples)
   
-  long angle = rawAngle * 14633L / HZ / 1000L;
+  long angle = (rawAngle) * 14633L / HZ / 1000L;
   
-  int xAxisValue = accelerometer.getXAxis() - xZero;  
-  int yAxisValue = accelerometer.getYAxis() - yZero; 
+  int xAxisValue = 0;//accelerometer.getXAxis() - xZero;  
+  int yAxisValue = 0;//accelerometer.getYAxis() - yZero; 
 /*    double rate = ((rawRate-zeroOff)*14633.0)/1000.0;
   //  angle += rate*((double)dt)/1000000.0;
     angle += ((rate+lastRate)*(double)dt)/2000000.0;
   */
 //  rawAngle -= 2000;
 
+  Serial.print((((double)(rawAngle))/(double)samples)*1000.0);
+  Serial.print('\t');
+  Serial.print(samples);
+  Serial.print('\t');
 
   Serial.print(angle);
   Serial.print('\t');
+  Serial.print(val);
 
   double len = sqrt(yAxisValue*yAxisValue+xAxisValue*xAxisValue);  
-  if(len < 105.0) {
-    angle = (long)(atan2(yAxisValue,xAxisValue)*180.0/pi);
+  if(len < 50.0) {
+    angle = (long)(atan2(xAxisValue,yAxisValue)*180.0/pi);
   }
-
+  Serial.print('\t');
   Serial.print(yAxisValue);
   Serial.print('\t');
   Serial.print(xAxisValue);
@@ -123,6 +130,6 @@ void loop()
   
   int thro = Kp*angle+Kd*(val-zeroOff);
   
-  right.setDirectedThrottle(thro,25);
-  left.setDirectedThrottle(thro,25);
+  right.setDirectedThrottle(thro,0);
+  left.setDirectedThrottle(thro,0);
 }
